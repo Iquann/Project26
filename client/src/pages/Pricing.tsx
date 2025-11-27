@@ -111,7 +111,7 @@ export default function Pricing() {
                 icon={Plane}
                 title="Puppy Transport"
                 description="We can recommend flight nanny services to deliver your puppy right to your airport."
-                details={["Price Range: $550-$1,100", "Includes flight, cabin fee, hotels if needed"]}
+                details={["Includes flight, cabin fee, hotels if needed"]}
               />
               <InfoCard
                 icon={Home}
