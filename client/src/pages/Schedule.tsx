@@ -1,97 +1,53 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LitterCard from "@/components/LitterCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// todo: remove mock functionality
-const mockLitters = {
-  goldendoodle: [
-    {
-      id: "g1",
-      motherName: "Rosie",
-      fatherName: "Max",
-      breed: "Mini Goldendoodle",
-      expectedDate: "Dec 15, 2024",
-      spotsAvailable: 4,
-      totalSpots: 6,
-      price: 2500,
-      status: "Upcoming" as const,
-    },
-    {
-      id: "g2",
-      motherName: "Bella",
-      fatherName: "Charlie",
-      breed: "Teacup Goldendoodle",
-      expectedDate: "Jan 10, 2025",
-      spotsAvailable: 2,
-      totalSpots: 5,
-      price: 2800,
-      status: "Upcoming" as const,
-    },
-    {
-      id: "g3",
-      motherName: "Daisy",
-      fatherName: "Tucker",
-      breed: "Mini Goldendoodle",
-      expectedDate: "Nov 20, 2024",
-      spotsAvailable: 3,
-      totalSpots: 7,
-      price: 2500,
-      status: "Born" as const,
-    },
-    {
-      id: "g4",
-      motherName: "Honey",
-      fatherName: "Bear",
-      breed: "Mini Goldendoodle",
-      expectedDate: "Oct 5, 2024",
-      spotsAvailable: 0,
-      totalSpots: 6,
-      price: 2500,
-      status: "Sold Out" as const,
-    },
-  ],
-  bernedoodle: [
-    {
-      id: "b1",
-      motherName: "Sage",
-      fatherName: "Winston",
-      breed: "Mini Bernedoodle",
-      expectedDate: "Dec 28, 2024",
-      spotsAvailable: 5,
-      totalSpots: 8,
-      price: 3000,
-      status: "Upcoming" as const,
-    },
-    {
-      id: "b2",
-      motherName: "Olive",
-      fatherName: "Moose",
-      breed: "Mini Bernedoodle",
-      expectedDate: "Nov 15, 2024",
-      spotsAvailable: 1,
-      totalSpots: 6,
-      price: 3200,
-      status: "Selection Open" as const,
-    },
-    {
-      id: "b3",
-      motherName: "Willow",
-      fatherName: "Atlas",
-      breed: "Standard Bernedoodle",
-      expectedDate: "Jan 20, 2025",
-      spotsAvailable: 6,
-      totalSpots: 8,
-      price: 2800,
-      status: "Upcoming" as const,
-    },
-  ],
-};
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Litter } from "@shared/schema";
 
 export default function Schedule() {
   const [activeTab, setActiveTab] = useState("goldendoodle");
+
+  const { data: litters = [], isLoading } = useQuery<Litter[]>({
+    queryKey: ["/api/litters"],
+  });
+
+  const goldendoodleLitters = litters.filter(l => l.breed.toLowerCase().includes("goldendoodle"));
+  const bernedoodleLitters = litters.filter(l => l.breed.toLowerCase().includes("bernedoodle"));
+
+  const LitterGrid = ({ items }: { items: Litter[] }) => (
+    isLoading ? (
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-48 rounded-lg" />
+        ))}
+      </div>
+    ) : items.length === 0 ? (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No litters found.</p>
+      </div>
+    ) : (
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {items.map((litter) => (
+          <LitterCard 
+            key={litter.id} 
+            id={litter.id}
+            motherName={litter.motherName}
+            fatherName={litter.fatherName}
+            breed={litter.breed}
+            expectedDate={litter.expectedDate}
+            spotsAvailable={litter.spotsAvailable}
+            totalSpots={litter.totalSpots}
+            price={litter.price}
+            status={litter.status as "Upcoming" | "Born" | "Selection Open" | "Sold Out"}
+          />
+        ))}
+      </div>
+    )
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -124,19 +80,11 @@ export default function Schedule() {
             </div>
 
             <TabsContent value="goldendoodle">
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {mockLitters.goldendoodle.map((litter) => (
-                  <LitterCard key={litter.id} {...litter} />
-                ))}
-              </div>
+              <LitterGrid items={goldendoodleLitters} />
             </TabsContent>
 
             <TabsContent value="bernedoodle">
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {mockLitters.bernedoodle.map((litter) => (
-                  <LitterCard key={litter.id} {...litter} />
-                ))}
-              </div>
+              <LitterGrid items={bernedoodleLitters} />
             </TabsContent>
           </Tabs>
 

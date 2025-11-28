@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -13,10 +15,59 @@ export default function Footer() {
     teacupGoldendoodles: false,
     miniBernedoodles: false,
   });
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const subscriptionMutation = useMutation({
+    mutationFn: async (data: { email: string; miniGoldendoodles: boolean; teacupGoldendoodles: boolean; miniBernedoodles: boolean }) => {
+      const res = await fetch("/api/mailing-list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to subscribe");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "You've been added to our mailing list!",
+      });
+      setEmail("");
+      setInterests({
+        miniGoldendoodles: false,
+        teacupGoldendoodles: false,
+        miniBernedoodles: false,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Subscribe:", { email, interests });
+    if (!email) {
+      toast({
+        title: "Error",
+        description: "Please enter an email address",
+        variant: "destructive",
+      });
+      return;
+    }
+    subscriptionMutation.mutate({
+      email,
+      miniGoldendoodles: interests.miniGoldendoodles,
+      teacupGoldendoodles: interests.teacupGoldendoodles,
+      miniBernedoodles: interests.miniBernedoodles,
+    });
   };
 
   return (
@@ -114,8 +165,15 @@ export default function Footer() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="flex-1"
                   data-testid="input-email"
+                  disabled={subscriptionMutation.isPending}
                 />
-                <Button type="submit" data-testid="button-subscribe">Subscribe</Button>
+                <Button 
+                  type="submit" 
+                  data-testid="button-subscribe"
+                  disabled={subscriptionMutation.isPending}
+                >
+                  {subscriptionMutation.isPending ? "Subscribing..." : "Subscribe"}
+                </Button>
               </div>
             </form>
           </div>

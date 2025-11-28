@@ -1,87 +1,22 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PuppyCard from "@/components/PuppyCard";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import goldendoodleImage from "@assets/generated_images/teacup_goldendoodle_puppy.png";
-import bernedoodleImage from "@assets/generated_images/tri-color_bernedoodle_puppy.png";
-
-// todo: remove mock functionality
-const mockPuppies = [
-  {
-    id: "1",
-    name: "Maple",
-    breed: "Mini Goldendoodle",
-    color: "Red",
-    gender: "Female" as const,
-    price: 2500,
-    status: "Available" as const,
-    imageSrc: goldendoodleImage,
-    birthDate: "Oct 15, 2024",
-  },
-  {
-    id: "2",
-    name: "Cooper",
-    breed: "Mini Goldendoodle",
-    color: "Cream",
-    gender: "Male" as const,
-    price: 2500,
-    status: "Available" as const,
-    imageSrc: goldendoodleImage,
-    birthDate: "Oct 15, 2024",
-  },
-  {
-    id: "3",
-    name: "Luna",
-    breed: "Mini Bernedoodle",
-    color: "Tri-Color",
-    gender: "Female" as const,
-    price: 3000,
-    status: "Reserved" as const,
-    imageSrc: bernedoodleImage,
-    birthDate: "Sep 28, 2024",
-  },
-  {
-    id: "4",
-    name: "Bear",
-    breed: "Mini Bernedoodle",
-    color: "Tri-Color",
-    gender: "Male" as const,
-    price: 2800,
-    status: "Available" as const,
-    imageSrc: bernedoodleImage,
-    birthDate: "Sep 28, 2024",
-  },
-  {
-    id: "5",
-    name: "Daisy",
-    breed: "Teacup Goldendoodle",
-    color: "Apricot",
-    gender: "Female" as const,
-    price: 2800,
-    status: "Sold" as const,
-    imageSrc: goldendoodleImage,
-    birthDate: "Aug 20, 2024",
-  },
-  {
-    id: "6",
-    name: "Charlie",
-    breed: "Mini Goldendoodle",
-    color: "Red",
-    gender: "Male" as const,
-    price: 2500,
-    status: "Available" as const,
-    imageSrc: goldendoodleImage,
-    birthDate: "Oct 15, 2024",
-  },
-];
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Puppy } from "@shared/schema";
 
 export default function Puppies() {
   const [breedFilter, setBreedFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const filteredPuppies = mockPuppies.filter((puppy) => {
+  const { data: puppies = [], isLoading } = useQuery<Puppy[]>({
+    queryKey: ["/api/puppies"],
+  });
+
+  const filteredPuppies = puppies.filter((puppy) => {
     const breedMatch = breedFilter === "all" || puppy.breed.toLowerCase().includes(breedFilter.toLowerCase());
     const statusMatch = statusFilter === "all" || puppy.status.toLowerCase() === statusFilter.toLowerCase();
     return breedMatch && statusMatch;
@@ -141,14 +76,31 @@ export default function Puppies() {
             </Button>
           </div>
 
-          {filteredPuppies.length === 0 ? (
+          {isLoading ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-96 rounded-lg" />
+              ))}
+            </div>
+          ) : filteredPuppies.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No puppies match your filters.</p>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredPuppies.map((puppy) => (
-                <PuppyCard key={puppy.id} {...puppy} />
+                <PuppyCard 
+                  key={puppy.id} 
+                  id={puppy.id}
+                  name={puppy.name}
+                  breed={puppy.breed}
+                  color={puppy.color}
+                  gender={puppy.gender as "Male" | "Female"}
+                  price={puppy.price}
+                  status={puppy.status as "Available" | "Reserved" | "Sold"}
+                  imageSrc={puppy.imageSrc || "/images/default-puppy.png"}
+                  birthDate={puppy.birthDate || undefined}
+                />
               ))}
             </div>
           )}
