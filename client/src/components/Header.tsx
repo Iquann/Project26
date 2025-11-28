@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Phone, X } from "lucide-react";
+import logoImage from "@assets/generated_images/timber_taylor_doodles_puppy_breeder_logo.png";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -21,7 +22,8 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="max-w-7xl mx-auto px-4 flex h-16 items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2" data-testid="link-home-logo">
-          <span className="text-xl font-semibold text-primary" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <img src={logoImage} alt="Timber Taylor Doodles" className="h-10 w-10 rounded-full" />
+          <span className="hidden sm:inline text-lg font-semibold text-primary" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Timber Taylor Doodles
           </span>
         </Link>

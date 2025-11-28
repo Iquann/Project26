@@ -11,6 +11,7 @@ import Schedule from "@/pages/Schedule";
 import HealthGuarantee from "@/pages/HealthGuarantee";
 import Goldendoodles from "@/pages/Goldendoodles";
 import Bernedoodles from "@/pages/Bernedoodles";
+import DepositCheckout from "@/pages/DepositCheckout";
 
 function Router() {
   return (
@@ -22,6 +23,8 @@ function Router() {
       <Route path="/health-guarantee" component={HealthGuarantee} />
       <Route path="/goldendoodles" component={Goldendoodles} />
       <Route path="/bernedoodles" component={Bernedoodles} />
+      <Route path="/deposit" component={DepositCheckout} />
+      <Route path="/deposit/:id" component={DepositCheckout} />
       <Route component={NotFound} />
     </Switch>
   );

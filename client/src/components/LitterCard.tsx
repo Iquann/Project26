@@ -64,7 +64,7 @@ export default function LitterCard({
             </p>
           </div>
           {!isSoldOut && (
-            <Link href={`/deposit/litter/${id}`}>
+            <Link href="/deposit">
               <Button data-testid={`button-deposit-${id}`}>
                 Place Deposit
               </Button>

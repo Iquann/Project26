@@ -65,7 +65,7 @@ export default function PuppyCard({
             ${price.toLocaleString()}
           </span>
           {status === "Available" && (
-            <Link href={`/deposit/${id}`}>
+            <Link href="/deposit">
               <Button size="sm" data-testid={`button-reserve-${id}`}>
                 Reserve
               </Button>

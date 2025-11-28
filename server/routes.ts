@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertPuppySchema, insertLitterSchema, insertDepositSchema, insertMailingListSchema } from "@shared/schema";
 import { z } from "zod";
+import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./paypal";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -227,6 +228,20 @@ export async function registerRoutes(
       console.error("Error subscribing to mailing list:", error);
       res.status(500).json({ error: "Failed to subscribe" });
     }
+  });
+
+  // ============ PAYPAL ============
+
+  app.get("/paypal/setup", async (req, res) => {
+    await loadPaypalDefault(req, res);
+  });
+
+  app.post("/paypal/order", async (req, res) => {
+    await createPaypalOrder(req, res);
+  });
+
+  app.post("/paypal/order/:orderID/capture", async (req, res) => {
+    await capturePaypalOrder(req, res);
   });
 
   return httpServer;
