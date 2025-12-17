@@ -5,7 +5,8 @@ import {
   type Deposit, type InsertDeposit,
   type MailingListEntry, type InsertMailingList,
   type PaymentMethod, type InsertPaymentMethod,
-  users, puppies, litters, deposits, mailingList, paymentMethods
+  type EmailSettings, type InsertEmailSettings,
+  users, puppies, litters, deposits, mailingList, paymentMethods, emailSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -47,6 +48,11 @@ export interface IStorage {
   getPaymentMethod(method: string): Promise<PaymentMethod | undefined>;
   createPaymentMethod(payment: InsertPaymentMethod): Promise<PaymentMethod>;
   updatePaymentMethod(method: string, updates: Partial<InsertPaymentMethod>): Promise<PaymentMethod | undefined>;
+
+  // Email Settings
+  getEmailSettings(): Promise<EmailSettings | undefined>;
+  createEmailSettings(settings: InsertEmailSettings): Promise<EmailSettings>;
+  updateEmailSettings(updates: Partial<InsertEmailSettings>): Promise<EmailSettings | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -172,6 +178,31 @@ export class DatabaseStorage implements IStorage {
 
   async updatePaymentMethod(method: string, updates: Partial<InsertPaymentMethod>): Promise<PaymentMethod | undefined> {
     const [result] = await db.update(paymentMethods).set(updates).where(eq(paymentMethods.method, method)).returning();
+    return result;
+  }
+
+  // Email Settings
+  async getEmailSettings(): Promise<EmailSettings | undefined> {
+    const [result] = await db.select().from(emailSettings).limit(1);
+    return result;
+  }
+
+  async createEmailSettings(settings: InsertEmailSettings): Promise<EmailSettings> {
+    const [result] = await db.insert(emailSettings).values(settings).returning();
+    return result;
+  }
+
+  async updateEmailSettings(updates: Partial<InsertEmailSettings>): Promise<EmailSettings | undefined> {
+    const allSettings = await db.select().from(emailSettings).limit(1);
+    if (allSettings.length === 0) {
+      const [created] = await db.insert(emailSettings).values({
+        senderEmail: updates.senderEmail || "noreply@timbertaylordoodles.com",
+        provider: updates.provider || "sendgrid",
+        ...updates,
+      }).returning();
+      return created;
+    }
+    const [result] = await db.update(emailSettings).set(updates).returning();
     return result;
   }
 }

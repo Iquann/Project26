@@ -125,3 +125,27 @@ export const insertPaymentMethodSchema = createInsertSchema(paymentMethods).omit
 
 export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodSchema>;
 export type PaymentMethod = typeof paymentMethods.$inferSelect;
+
+// Email Settings table - stores email configuration
+export const emailSettings = pgTable("email_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderEmail: text("sender_email").notNull(), // Email address to send from
+  senderName: text("sender_name"), // Display name for emails
+  provider: text("provider").notNull(), // "sendgrid", "gmail", "custom"
+  apiKey: text("api_key"), // SendGrid API key
+  gmailEmail: text("gmail_email"), // Gmail address
+  gmailPassword: text("gmail_password"), // Gmail app password
+  smtpHost: text("smtp_host"), // SMTP host for custom
+  smtpPort: integer("smtp_port"), // SMTP port
+  smtpUsername: text("smtp_username"), // SMTP username
+  smtpPassword: text("smtp_password"), // SMTP password
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEmailSettingsSchema = createInsertSchema(emailSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertEmailSettings = z.infer<typeof insertEmailSettingsSchema>;
+export type EmailSettings = typeof emailSettings.$inferSelect;

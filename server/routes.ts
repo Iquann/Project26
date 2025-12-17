@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPuppySchema, insertLitterSchema, insertDepositSchema, insertMailingListSchema, insertPaymentMethodSchema } from "@shared/schema";
+import { insertPuppySchema, insertLitterSchema, insertDepositSchema, insertMailingListSchema, insertPaymentMethodSchema, insertEmailSettingsSchema } from "@shared/schema";
 import { z } from "zod";
 import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./paypal";
 
@@ -308,6 +308,52 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating payment method:", error);
       res.status(500).json({ error: "Failed to update payment method" });
+    }
+  });
+
+  // ============ EMAIL SETTINGS ============
+
+  // Get email settings
+  app.get("/api/email-settings", async (req, res) => {
+    try {
+      const settings = await storage.getEmailSettings();
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Error fetching email settings:", error);
+      res.status(500).json({ error: "Failed to fetch email settings" });
+    }
+  });
+
+  // Create/Update email settings
+  app.post("/api/email-settings", async (req, res) => {
+    try {
+      const parsed = insertEmailSettingsSchema.parse(req.body);
+      const existingSettings = await storage.getEmailSettings();
+      
+      let settings;
+      if (existingSettings) {
+        settings = await storage.updateEmailSettings(parsed);
+      } else {
+        settings = await storage.createEmailSettings(parsed);
+      }
+      res.status(201).json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid email settings", details: error.errors });
+      }
+      console.error("Error saving email settings:", error);
+      res.status(500).json({ error: "Failed to save email settings" });
+    }
+  });
+
+  // Update email settings (PATCH)
+  app.patch("/api/email-settings", async (req, res) => {
+    try {
+      const settings = await storage.updateEmailSettings(req.body);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating email settings:", error);
+      res.status(500).json({ error: "Failed to update email settings" });
     }
   });
 

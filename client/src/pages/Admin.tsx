@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Trash2, Edit2, Copy, Mail } from "lucide-react";
+import { AlertCircle, Trash2, Edit2, Copy, Mail, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Puppy, Litter, MailingListEntry, Deposit } from "@shared/schema";
+import type { Puppy, Litter, MailingListEntry, Deposit, EmailSettings } from "@shared/schema";
 
 export default function Admin() {
   const [editingPuppy, setEditingPuppy] = useState<Puppy | null>(null);
@@ -37,6 +37,11 @@ export default function Admin() {
   // Fetch deposits
   const { data: deposits = [], isLoading: depositsLoading } = useQuery<Deposit[]>({
     queryKey: ["/api/deposits"],
+  });
+
+  // Fetch email settings
+  const { data: emailSettingsData, isLoading: emailSettingsLoading } = useQuery<EmailSettings>({
+    queryKey: ["/api/email-settings"],
   });
 
   // Puppy mutations
@@ -124,6 +129,10 @@ export default function Admin() {
               <TabsTrigger value="emails">
                 <Mail className="h-4 w-4 mr-2" />
                 Emails ({mailingList.length + deposits.length})
+              </TabsTrigger>
+              <TabsTrigger value="settings">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
               </TabsTrigger>
             </TabsList>
 
@@ -388,6 +397,17 @@ export default function Admin() {
                 </Card>
               </div>
             </TabsContent>
+
+            <TabsContent value="settings">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Email Configuration</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <EmailSettingsForm initialData={emailSettingsData} />
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       </main>
@@ -489,6 +509,90 @@ function PuppyForm({
           Cancel
         </Button>
       </div>
+    </form>
+  );
+}
+
+function EmailSettingsForm({ initialData }: { initialData?: EmailSettings }) {
+  const [formData, setFormData] = useState({
+    senderEmail: initialData?.senderEmail || "noreply@timbertaylordoodles.com",
+    senderName: initialData?.senderName || "Timber Taylor Doodles",
+    provider: initialData?.provider || "sendgrid",
+    apiKey: initialData?.apiKey || "",
+  });
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/email-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to save settings");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/email-settings"] });
+      toast({ title: "Success", description: "Email settings saved" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save email settings", variant: "destructive" });
+    },
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        updateMutation.mutate(formData);
+      }}
+      className="space-y-4 max-w-md"
+    >
+      <div>
+        <Label>Sender Email</Label>
+        <Input
+          value={formData.senderEmail}
+          onChange={(e) => setFormData({ ...formData, senderEmail: e.target.value })}
+          type="email"
+          data-testid="input-sender-email"
+        />
+      </div>
+      <div>
+        <Label>Sender Name</Label>
+        <Input
+          value={formData.senderName}
+          onChange={(e) => setFormData({ ...formData, senderName: e.target.value })}
+          data-testid="input-sender-name"
+        />
+      </div>
+      <div>
+        <Label>Email Provider</Label>
+        <Select value={formData.provider} onValueChange={(value) => setFormData({ ...formData, provider: value })}>
+          <SelectTrigger data-testid="select-provider">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sendgrid">SendGrid</SelectItem>
+            <SelectItem value="gmail">Gmail</SelectItem>
+            <SelectItem value="custom">Custom SMTP</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label>API Key / Password</Label>
+        <Input
+          value={formData.apiKey}
+          onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+          type="password"
+          placeholder="Your API key or app password"
+          data-testid="input-api-key"
+        />
+      </div>
+      <Button type="submit" disabled={updateMutation.isPending} data-testid="button-save-email-settings">
+        {updateMutation.isPending ? "Saving..." : "Save Settings"}
+      </Button>
     </form>
   );
 }
