@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { useParams, useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PaymentMethodCard from "@/components/PaymentMethodCard";
 import PayPalButton from "@/components/PayPalButton";
+import PaymentDetailsModal from "@/components/PaymentDetailsModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { Puppy, Litter } from "@shared/schema";
+import type { PaymentMethod as PaymentMethodType } from "@shared/schema";
 
 type PaymentMethod = "paypal" | "cashapp" | "zelle" | "applepay" | "crypto";
 
@@ -19,8 +20,13 @@ export default function DepositCheckout() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [showPaymentDetails, setShowPaymentDetails] = useState<PaymentMethodType | null>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
+
+  const { data: paymentMethods = [] } = useQuery<PaymentMethodType[]>({
+    queryKey: ["/api/payment-methods"],
+  });
 
   const depositAmount = 500;
   const depositInCents = depositAmount * 100;
@@ -38,7 +44,7 @@ export default function DepositCheckout() {
       }
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "Deposit created! You'll receive a confirmation email shortly.",
@@ -86,16 +92,9 @@ export default function DepositCheckout() {
       return;
     }
 
-    if (selectedMethod === "crypto") {
-      toast({
-        title: "Bitcoin/USDT Instructions",
-        description: "We'll email you wallet details and payment instructions",
-      });
-    } else {
-      toast({
-        title: "Payment Method Selected",
-        description: `We'll contact you shortly with payment details for ${selectedMethod.toUpperCase()}`,
-      });
+    const methodInfo = paymentMethods.find((m) => m.method === selectedMethod);
+    if (methodInfo) {
+      setShowPaymentDetails(methodInfo);
     }
 
     createDepositMutation.mutate({
@@ -245,7 +244,7 @@ export default function DepositCheckout() {
                   disabled={createDepositMutation.isPending}
                   data-testid="button-submit-deposit"
                 >
-                  {createDepositMutation.isPending ? "Processing..." : "Continue"}
+                  {createDepositMutation.isPending ? "Processing..." : "View Payment Details"}
                 </Button>
               )}
             </div>
@@ -300,6 +299,8 @@ export default function DepositCheckout() {
           </div>
         </div>
       </main>
+
+      <PaymentDetailsModal method={showPaymentDetails} onClose={() => setShowPaymentDetails(null)} />
       <Footer />
     </div>
   );

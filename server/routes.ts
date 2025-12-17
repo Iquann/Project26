@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPuppySchema, insertLitterSchema, insertDepositSchema, insertMailingListSchema } from "@shared/schema";
+import { insertPuppySchema, insertLitterSchema, insertDepositSchema, insertMailingListSchema, insertPaymentMethodSchema } from "@shared/schema";
 import { z } from "zod";
 import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault } from "./paypal";
 
@@ -253,6 +253,62 @@ export async function registerRoutes(
 
   app.post("/paypal/order/:orderID/capture", async (req, res) => {
     await capturePaypalOrder(req, res);
+  });
+
+  // ============ PAYMENT METHODS ============
+
+  // Get all payment methods
+  app.get("/api/payment-methods", async (req, res) => {
+    try {
+      const methods = await storage.getAllPaymentMethods();
+      res.json(methods);
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+      res.status(500).json({ error: "Failed to fetch payment methods" });
+    }
+  });
+
+  // Get single payment method
+  app.get("/api/payment-methods/:method", async (req, res) => {
+    try {
+      const method = await storage.getPaymentMethod(req.params.method);
+      if (!method) {
+        return res.status(404).json({ error: "Payment method not found" });
+      }
+      res.json(method);
+    } catch (error) {
+      console.error("Error fetching payment method:", error);
+      res.status(500).json({ error: "Failed to fetch payment method" });
+    }
+  });
+
+  // Create payment method
+  app.post("/api/payment-methods", async (req, res) => {
+    try {
+      const parsed = insertPaymentMethodSchema.parse(req.body);
+      const method = await storage.createPaymentMethod(parsed);
+      res.status(201).json(method);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid payment method data", details: error.errors });
+      }
+      console.error("Error creating payment method:", error);
+      res.status(500).json({ error: "Failed to create payment method" });
+    }
+  });
+
+  // Update payment method
+  app.patch("/api/payment-methods/:method", async (req, res) => {
+    try {
+      const method = await storage.updatePaymentMethod(req.params.method, req.body);
+      if (!method) {
+        return res.status(404).json({ error: "Payment method not found" });
+      }
+      res.json(method);
+    } catch (error) {
+      console.error("Error updating payment method:", error);
+      res.status(500).json({ error: "Failed to update payment method" });
+    }
   });
 
   return httpServer;

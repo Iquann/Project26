@@ -4,7 +4,8 @@ import {
   type Litter, type InsertLitter,
   type Deposit, type InsertDeposit,
   type MailingListEntry, type InsertMailingList,
-  users, puppies, litters, deposits, mailingList
+  type PaymentMethod, type InsertPaymentMethod,
+  users, puppies, litters, deposits, mailingList, paymentMethods
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -40,6 +41,12 @@ export interface IStorage {
   addToMailingList(entry: InsertMailingList): Promise<MailingListEntry>;
   getMailingListByEmail(email: string): Promise<MailingListEntry | undefined>;
   getAllMailingList(): Promise<MailingListEntry[]>;
+
+  // Payment Methods
+  getAllPaymentMethods(): Promise<PaymentMethod[]>;
+  getPaymentMethod(method: string): Promise<PaymentMethod | undefined>;
+  createPaymentMethod(payment: InsertPaymentMethod): Promise<PaymentMethod>;
+  updatePaymentMethod(method: string, updates: Partial<InsertPaymentMethod>): Promise<PaymentMethod | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -146,6 +153,26 @@ export class DatabaseStorage implements IStorage {
 
   async getAllMailingList(): Promise<MailingListEntry[]> {
     return db.select().from(mailingList);
+  }
+
+  // Payment Methods
+  async getAllPaymentMethods(): Promise<PaymentMethod[]> {
+    return db.select().from(paymentMethods);
+  }
+
+  async getPaymentMethod(method: string): Promise<PaymentMethod | undefined> {
+    const [result] = await db.select().from(paymentMethods).where(eq(paymentMethods.method, method));
+    return result;
+  }
+
+  async createPaymentMethod(payment: InsertPaymentMethod): Promise<PaymentMethod> {
+    const [result] = await db.insert(paymentMethods).values(payment).returning();
+    return result;
+  }
+
+  async updatePaymentMethod(method: string, updates: Partial<InsertPaymentMethod>): Promise<PaymentMethod | undefined> {
+    const [result] = await db.update(paymentMethods).set(updates).where(eq(paymentMethods.method, method)).returning();
+    return result;
   }
 }
 

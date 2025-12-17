@@ -105,3 +105,23 @@ export const insertMailingListSchema = createInsertSchema(mailingList).omit({
 
 export type InsertMailingList = z.infer<typeof insertMailingListSchema>;
 export type MailingListEntry = typeof mailingList.$inferSelect;
+
+// Payment Methods table - stores payment details for different methods
+export const paymentMethods = pgTable("payment_methods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  method: text("method").notNull().unique(), // "cashapp", "zelle", "applepay", "crypto"
+  displayName: text("display_name").notNull(), // "Cash App", "Zelle", etc
+  name: text("name"), // Account holder name
+  accountInfo: text("account_info"), // Tag, account number, email, wallet address, etc
+  instructions: text("instructions"), // Payment instructions
+  isActive: boolean("is_active").default(true),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPaymentMethodSchema = createInsertSchema(paymentMethods).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodSchema>;
+export type PaymentMethod = typeof paymentMethods.$inferSelect;
