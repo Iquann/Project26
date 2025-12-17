@@ -208,6 +208,17 @@ export async function registerRoutes(
 
   // ============ MAILING LIST ============
 
+  // Get all mailing list entries
+  app.get("/api/mailing-list", async (req, res) => {
+    try {
+      const entries = await storage.getAllMailingList();
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching mailing list:", error);
+      res.status(500).json({ error: "Failed to fetch mailing list" });
+    }
+  });
+
   // Subscribe to mailing list
   app.post("/api/mailing-list", async (req, res) => {
     try {

@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Trash2, Edit2 } from "lucide-react";
+import { AlertCircle, Trash2, Edit2, Copy, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Puppy, Litter } from "@shared/schema";
+import type { Puppy, Litter, MailingListEntry, Deposit } from "@shared/schema";
 
 export default function Admin() {
   const [editingPuppy, setEditingPuppy] = useState<Puppy | null>(null);
@@ -27,6 +27,16 @@ export default function Admin() {
   // Fetch litters
   const { data: litters = [], isLoading: littersLoading } = useQuery<Litter[]>({
     queryKey: ["/api/litters"],
+  });
+
+  // Fetch mailing list
+  const { data: mailingList = [], isLoading: mailingListLoading } = useQuery<MailingListEntry[]>({
+    queryKey: ["/api/mailing-list"],
+  });
+
+  // Fetch deposits
+  const { data: deposits = [], isLoading: depositsLoading } = useQuery<Deposit[]>({
+    queryKey: ["/api/deposits"],
   });
 
   // Puppy mutations
@@ -111,6 +121,10 @@ export default function Admin() {
             <TabsList className="mb-8">
               <TabsTrigger value="puppies">Puppies ({puppies.length})</TabsTrigger>
               <TabsTrigger value="litters">Litters ({litters.length})</TabsTrigger>
+              <TabsTrigger value="emails">
+                <Mail className="h-4 w-4 mr-2" />
+                Emails ({mailingList.length + deposits.length})
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="puppies">
@@ -245,6 +259,133 @@ export default function Admin() {
                     ))
                   )}
                 </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="emails">
+              <div className="space-y-8">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Mailing List Subscribers ({mailingList.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {mailingListLoading ? (
+                      <p className="text-muted-foreground">Loading...</p>
+                    ) : mailingList.length === 0 ? (
+                      <p className="text-muted-foreground">No subscribers yet</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {mailingList.map((entry, idx) => (
+                          <div
+                            key={entry.id || idx}
+                            className="flex items-center justify-between p-3 rounded-lg border bg-card hover-elevate"
+                          >
+                            <div>
+                              <p className="font-medium">{entry.email}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Subscribed: {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : "Unknown"}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                navigator.clipboard.writeText(entry.email);
+                                toast({ title: "Copied", description: "Email copied to clipboard" });
+                              }}
+                              data-testid={`button-copy-email-${idx}`}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          className="w-full mt-4"
+                          onClick={() => {
+                            const emails = mailingList.map((e) => e.email).join(", ");
+                            navigator.clipboard.writeText(emails);
+                            toast({ title: "Copied", description: "All emails copied to clipboard" });
+                          }}
+                          data-testid="button-copy-all-emails"
+                        >
+                          Copy All Emails
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Deposit Customers ({deposits.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {depositsLoading ? (
+                      <p className="text-muted-foreground">Loading...</p>
+                    ) : deposits.length === 0 ? (
+                      <p className="text-muted-foreground">No deposits yet</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left p-2">Name</th>
+                              <th className="text-left p-2">Email</th>
+                              <th className="text-left p-2">Phone</th>
+                              <th className="text-left p-2">Breed</th>
+                              <th className="text-left p-2">Amount</th>
+                              <th className="text-left p-2">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {deposits.map((deposit, idx) => (
+                              <tr key={deposit.id || idx} className="border-b hover:bg-muted/50">
+                                <td className="p-2">{deposit.customerName}</td>
+                                <td className="p-2">
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(deposit.customerEmail);
+                                      toast({ title: "Copied", description: "Email copied" });
+                                    }}
+                                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                                    data-testid={`button-copy-customer-email-${idx}`}
+                                  >
+                                    {deposit.customerEmail}
+                                  </button>
+                                </td>
+                                <td className="p-2">{deposit.customerPhone || "N/A"}</td>
+                                <td className="p-2">{deposit.breedType}</td>
+                                <td className="p-2">${(deposit.amount / 100).toFixed(2)}</td>
+                                <td className="p-2">
+                                  <span
+                                    className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                                      deposit.paymentStatus === "completed"
+                                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                                    }`}
+                                  >
+                                    {deposit.paymentStatus}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <Button
+                          className="w-full mt-4"
+                          onClick={() => {
+                            const emails = deposits.map((d) => d.customerEmail).join(", ");
+                            navigator.clipboard.writeText(emails);
+                            toast({ title: "Copied", description: "All customer emails copied" });
+                          }}
+                          data-testid="button-copy-all-customer-emails"
+                        >
+                          Copy All Customer Emails
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
           </Tabs>

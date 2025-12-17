@@ -39,6 +39,7 @@ export interface IStorage {
   // Mailing List
   addToMailingList(entry: InsertMailingList): Promise<MailingListEntry>;
   getMailingListByEmail(email: string): Promise<MailingListEntry | undefined>;
+  getAllMailingList(): Promise<MailingListEntry[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -141,6 +142,10 @@ export class DatabaseStorage implements IStorage {
   async getMailingListByEmail(email: string): Promise<MailingListEntry | undefined> {
     const [entry] = await db.select().from(mailingList).where(eq(mailingList.email, email));
     return entry;
+  }
+
+  async getAllMailingList(): Promise<MailingListEntry[]> {
+    return db.select().from(mailingList);
   }
 }
 
