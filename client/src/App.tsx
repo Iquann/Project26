@@ -12,6 +12,7 @@ import HealthGuarantee from "@/pages/HealthGuarantee";
 import Goldendoodles from "@/pages/Goldendoodles";
 import Bernedoodles from "@/pages/Bernedoodles";
 import DepositCheckout from "@/pages/DepositCheckout";
+import Admin from "@/pages/Admin";
 
 function Router() {
   return (
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/bernedoodles" component={Bernedoodles} />
       <Route path="/deposit" component={DepositCheckout} />
       <Route path="/deposit/:id" component={DepositCheckout} />
+      <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
   );
