@@ -49,9 +49,16 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    throw new Error("SESSION_SECRET environment variable is required for security");
+  }
+
+  const isProduction = process.env.NODE_ENV === "production";
+  
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "timbertaylor-secret-key-2024",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       store: new SessionStore({
@@ -60,7 +67,7 @@ export async function registerRoutes(
       cookie: {
         maxAge: 7 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: false,
+        secure: isProduction,
         sameSite: "lax",
       },
     })
