@@ -6,16 +6,22 @@ import {
   type MailingListEntry, type InsertMailingList,
   type PaymentMethod, type InsertPaymentMethod,
   type EmailSettings, type InsertEmailSettings,
-  users, puppies, litters, deposits, mailingList, paymentMethods, emailSettings
+  type Notification, type InsertNotification,
+  type SiteSettings, type InsertSiteSettings,
+  users, puppies, litters, deposits, mailingList, paymentMethods, emailSettings, notifications, siteSettings
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
+  getAllUsers(): Promise<User[]>;
+  updateUserLastLogin(id: string): Promise<void>;
   
   // Puppies
   getAllPuppies(): Promise<Puppy[]>;
@@ -48,11 +54,25 @@ export interface IStorage {
   getPaymentMethod(method: string): Promise<PaymentMethod | undefined>;
   createPaymentMethod(payment: InsertPaymentMethod): Promise<PaymentMethod>;
   updatePaymentMethod(method: string, updates: Partial<InsertPaymentMethod>): Promise<PaymentMethod | undefined>;
+  deletePaymentMethod(method: string): Promise<boolean>;
 
   // Email Settings
   getEmailSettings(): Promise<EmailSettings | undefined>;
   createEmailSettings(settings: InsertEmailSettings): Promise<EmailSettings>;
   updateEmailSettings(updates: Partial<InsertEmailSettings>): Promise<EmailSettings | undefined>;
+
+  // Notifications
+  getAllNotifications(): Promise<Notification[]>;
+  getUnreadNotifications(): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(): Promise<void>;
+  deleteNotification(id: string): Promise<boolean>;
+
+  // Site Settings
+  getSiteSetting(key: string): Promise<SiteSettings | undefined>;
+  setSiteSetting(key: string, value: string): Promise<SiteSettings>;
+  getAllSiteSettings(): Promise<SiteSettings[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -72,9 +92,27 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User | undefined> {
+    const [user] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
+  }
+
+  async updateUserLastLogin(id: string): Promise<void> {
+    await db.update(users).set({ lastLogin: new Date() }).where(eq(users.id, id));
+  }
+
   // Puppies
   async getAllPuppies(): Promise<Puppy[]> {
-    return db.select().from(puppies);
+    return db.select().from(puppies).orderBy(desc(puppies.createdAt));
   }
 
   async getPuppyById(id: string): Promise<Puppy | undefined> {
@@ -99,7 +137,7 @@ export class DatabaseStorage implements IStorage {
 
   // Litters
   async getAllLitters(): Promise<Litter[]> {
-    return db.select().from(litters);
+    return db.select().from(litters).orderBy(desc(litters.createdAt));
   }
 
   async getLitterById(id: string): Promise<Litter | undefined> {
@@ -128,7 +166,7 @@ export class DatabaseStorage implements IStorage {
 
   // Deposits
   async getAllDeposits(): Promise<Deposit[]> {
-    return db.select().from(deposits);
+    return db.select().from(deposits).orderBy(desc(deposits.createdAt));
   }
 
   async getDepositById(id: string): Promise<Deposit | undefined> {
@@ -181,6 +219,11 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async deletePaymentMethod(method: string): Promise<boolean> {
+    const result = await db.delete(paymentMethods).where(eq(paymentMethods.method, method)).returning();
+    return result.length > 0;
+  }
+
   // Email Settings
   async getEmailSettings(): Promise<EmailSettings | undefined> {
     const [result] = await db.select().from(emailSettings).limit(1);
@@ -204,6 +247,53 @@ export class DatabaseStorage implements IStorage {
     }
     const [result] = await db.update(emailSettings).set(updates).returning();
     return result;
+  }
+
+  // Notifications
+  async getAllNotifications(): Promise<Notification[]> {
+    return db.select().from(notifications).orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotifications(): Promise<Notification[]> {
+    return db.select().from(notifications).where(eq(notifications.isRead, false)).orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [result] = await db.insert(notifications).values(notification).returning();
+    return result;
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    await db.update(notifications).set({ isRead: true });
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    const result = await db.delete(notifications).where(eq(notifications.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Site Settings
+  async getSiteSetting(key: string): Promise<SiteSettings | undefined> {
+    const [result] = await db.select().from(siteSettings).where(eq(siteSettings.key, key));
+    return result;
+  }
+
+  async setSiteSetting(key: string, value: string): Promise<SiteSettings> {
+    const existing = await this.getSiteSetting(key);
+    if (existing) {
+      const [result] = await db.update(siteSettings).set({ value, updatedAt: new Date() }).where(eq(siteSettings.key, key)).returning();
+      return result;
+    }
+    const [result] = await db.insert(siteSettings).values({ key, value }).returning();
+    return result;
+  }
+
+  async getAllSiteSettings(): Promise<SiteSettings[]> {
+    return db.select().from(siteSettings);
   }
 }
 
