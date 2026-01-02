@@ -681,5 +681,63 @@ export async function registerRoutes(
     }
   });
 
+  // ============ SITE SETTINGS ============
+
+  app.get("/api/site-settings", async (req, res) => {
+    try {
+      const allSettings = await storage.getAllSiteSettings();
+      const settingsMap: Record<string, string> = {};
+      allSettings.forEach(s => {
+        if (s.value !== null) {
+          settingsMap[s.key] = s.value;
+        }
+      });
+      res.json(settingsMap);
+    } catch (error) {
+      console.error("Error fetching site settings:", error);
+      res.status(500).json({ error: "Failed to fetch site settings" });
+    }
+  });
+
+  app.get("/api/site-settings/:key", async (req, res) => {
+    try {
+      const setting = await storage.getSiteSetting(req.params.key);
+      res.json(setting || { key: req.params.key, value: null });
+    } catch (error) {
+      console.error("Error fetching site setting:", error);
+      res.status(500).json({ error: "Failed to fetch site setting" });
+    }
+  });
+
+  app.post("/api/site-settings", requireAdmin, async (req, res) => {
+    try {
+      const updates = req.body as Record<string, string>;
+      const results: Record<string, string> = {};
+      
+      for (const [key, value] of Object.entries(updates)) {
+        const setting = await storage.setSiteSetting(key, value);
+        if (setting.value !== null) {
+          results[key] = setting.value;
+        }
+      }
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Error saving site settings:", error);
+      res.status(500).json({ error: "Failed to save site settings" });
+    }
+  });
+
+  app.put("/api/site-settings/:key", requireAdmin, async (req, res) => {
+    try {
+      const { value } = req.body;
+      const setting = await storage.setSiteSetting(req.params.key, value);
+      res.json(setting);
+    } catch (error) {
+      console.error("Error saving site setting:", error);
+      res.status(500).json({ error: "Failed to save site setting" });
+    }
+  });
+
   return httpServer;
 }

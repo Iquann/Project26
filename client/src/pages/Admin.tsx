@@ -1474,11 +1474,58 @@ function UserForm({ user, onSubmit, isLoading, onCancel, isEditing }: {
 }
 
 function SettingsTab() {
-  const { data: emailSettings } = useQuery<EmailSettings>({ queryKey: ["/api/email-settings"] });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [activeSection, setActiveSection] = useState("business");
 
-  const [formData, setFormData] = useState({
+  const { data: siteSettings = {} } = useQuery<Record<string, string>>({ 
+    queryKey: ["/api/site-settings"] 
+  });
+
+  const { data: emailSettings } = useQuery<EmailSettings>({ 
+    queryKey: ["/api/email-settings"] 
+  });
+
+  const [businessInfo, setBusinessInfo] = useState({
+    businessName: "Timber Taylor Doodles",
+    tagline: "Your Perfect Furry Family Member Awaits",
+    phone: "",
+    email: "",
+    address: "",
+    city: "",
+    state: "Utah",
+    zipCode: "",
+  });
+
+  const [socialLinks, setSocialLinks] = useState({
+    facebook: "",
+    instagram: "",
+    tiktok: "",
+    youtube: "",
+    twitter: "",
+  });
+
+  const [businessHours, setBusinessHours] = useState({
+    mondayFriday: "9:00 AM - 5:00 PM",
+    saturday: "10:00 AM - 3:00 PM",
+    sunday: "Closed",
+  });
+
+  const [aboutContent, setAboutContent] = useState({
+    heroTitle: "Welcome to Timber Taylor Doodles",
+    heroSubtitle: "Family-raised Mini Goldendoodles and Bernedoodles in Utah",
+    aboutText: "",
+    missionStatement: "",
+  });
+
+  const [pricingInfo, setPricingInfo] = useState({
+    depositAmount: "500",
+    miniGoldendoodlePrice: "2500",
+    teacupGoldendoodlePrice: "3500",
+    miniBernedoodlePrice: "3000",
+  });
+
+  const [emailFormData, setEmailFormData] = useState({
     senderEmail: "noreply@timbertaylordoodles.com",
     senderName: "Timber Taylor Doodles",
     provider: "sendgrid",
@@ -1486,8 +1533,47 @@ function SettingsTab() {
   });
 
   useEffect(() => {
+    if (siteSettings && Object.keys(siteSettings).length > 0) {
+      setBusinessInfo({
+        businessName: siteSettings.businessName || "Timber Taylor Doodles",
+        tagline: siteSettings.tagline || "Your Perfect Furry Family Member Awaits",
+        phone: siteSettings.phone || "",
+        email: siteSettings.email || "",
+        address: siteSettings.address || "",
+        city: siteSettings.city || "",
+        state: siteSettings.state || "Utah",
+        zipCode: siteSettings.zipCode || "",
+      });
+      setSocialLinks({
+        facebook: siteSettings.facebook || "",
+        instagram: siteSettings.instagram || "",
+        tiktok: siteSettings.tiktok || "",
+        youtube: siteSettings.youtube || "",
+        twitter: siteSettings.twitter || "",
+      });
+      setBusinessHours({
+        mondayFriday: siteSettings.mondayFriday || "9:00 AM - 5:00 PM",
+        saturday: siteSettings.saturday || "10:00 AM - 3:00 PM",
+        sunday: siteSettings.sunday || "Closed",
+      });
+      setAboutContent({
+        heroTitle: siteSettings.heroTitle || "Welcome to Timber Taylor Doodles",
+        heroSubtitle: siteSettings.heroSubtitle || "Family-raised Mini Goldendoodles and Bernedoodles in Utah",
+        aboutText: siteSettings.aboutText || "",
+        missionStatement: siteSettings.missionStatement || "",
+      });
+      setPricingInfo({
+        depositAmount: siteSettings.depositAmount || "500",
+        miniGoldendoodlePrice: siteSettings.miniGoldendoodlePrice || "2500",
+        teacupGoldendoodlePrice: siteSettings.teacupGoldendoodlePrice || "3500",
+        miniBernedoodlePrice: siteSettings.miniBernedoodlePrice || "3000",
+      });
+    }
+  }, [siteSettings]);
+
+  useEffect(() => {
     if (emailSettings) {
-      setFormData({
+      setEmailFormData({
         senderEmail: emailSettings.senderEmail || "noreply@timbertaylordoodles.com",
         senderName: emailSettings.senderName || "Timber Taylor Doodles",
         provider: emailSettings.provider || "sendgrid",
@@ -1496,7 +1582,26 @@ function SettingsTab() {
     }
   }, [emailSettings]);
 
-  const updateMutation = useMutation({
+  const saveSiteSettingsMutation = useMutation({
+    mutationFn: async (data: Record<string, string>) => {
+      const res = await fetch("/api/site-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/site-settings"] });
+      toast({ title: "Settings Saved", description: "Your changes have been saved" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save settings", variant: "destructive" });
+    },
+  });
+
+  const saveEmailSettingsMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch("/api/email-settings", {
         method: "POST",
@@ -1508,46 +1613,266 @@ function SettingsTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/email-settings"] });
-      toast({ title: "Settings Saved" });
+      toast({ title: "Email Settings Saved" });
     },
   });
 
+  const saveBusinessInfo = () => saveSiteSettingsMutation.mutate(businessInfo);
+  const saveSocialLinks = () => saveSiteSettingsMutation.mutate(socialLinks);
+  const saveBusinessHours = () => saveSiteSettingsMutation.mutate(businessHours);
+  const saveAboutContent = () => saveSiteSettingsMutation.mutate(aboutContent);
+  const savePricingInfo = () => saveSiteSettingsMutation.mutate(pricingInfo);
+
+  const sections = [
+    { id: "business", label: "Business Info", icon: Settings },
+    { id: "social", label: "Social Media", icon: Users },
+    { id: "hours", label: "Business Hours", icon: Bell },
+    { id: "content", label: "Website Content", icon: Edit2 },
+    { id: "pricing", label: "Pricing", icon: DollarSign },
+    { id: "email", label: "Email Config", icon: Mail },
+  ];
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Email Settings</CardTitle>
-        <CardDescription>Configure how emails are sent to customers</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={(e) => { e.preventDefault(); updateMutation.mutate(formData); }} className="space-y-4 max-w-md">
-          <div>
-            <Label>Sender Email</Label>
-            <Input value={formData.senderEmail} onChange={(e) => setFormData({ ...formData, senderEmail: e.target.value })} type="email" />
-          </div>
-          <div>
-            <Label>Sender Name</Label>
-            <Input value={formData.senderName} onChange={(e) => setFormData({ ...formData, senderName: e.target.value })} />
-          </div>
-          <div>
-            <Label>Provider</Label>
-            <Select value={formData.provider} onValueChange={(value) => setFormData({ ...formData, provider: value })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sendgrid">SendGrid</SelectItem>
-                <SelectItem value="gmail">Gmail</SelectItem>
-                <SelectItem value="custom">Custom SMTP</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>API Key / Password</Label>
-            <Input type="password" value={formData.apiKey} onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })} placeholder="Your API key" />
-          </div>
-          <Button type="submit" disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? "Saving..." : "Save Settings"}
+    <div className="grid gap-6 md:grid-cols-[200px_1fr]">
+      <div className="flex md:flex-col gap-2">
+        {sections.map(({ id, label, icon: Icon }) => (
+          <Button
+            key={id}
+            variant={activeSection === id ? "default" : "ghost"}
+            className="justify-start"
+            onClick={() => setActiveSection(id)}
+            data-testid={`button-settings-${id}`}
+          >
+            <Icon className="h-4 w-4 mr-2" />
+            {label}
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+        ))}
+      </div>
+
+      <div className="space-y-6">
+        {activeSection === "business" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Business Information</CardTitle>
+              <CardDescription>Your business name, contact details, and location</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => { e.preventDefault(); saveBusinessInfo(); }} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="col-span-full">
+                    <Label>Business Name</Label>
+                    <Input value={businessInfo.businessName} onChange={(e) => setBusinessInfo({ ...businessInfo, businessName: e.target.value })} data-testid="input-business-name" />
+                  </div>
+                  <div className="col-span-full">
+                    <Label>Tagline</Label>
+                    <Input value={businessInfo.tagline} onChange={(e) => setBusinessInfo({ ...businessInfo, tagline: e.target.value })} data-testid="input-tagline" />
+                  </div>
+                  <div>
+                    <Label>Phone Number</Label>
+                    <Input value={businessInfo.phone} onChange={(e) => setBusinessInfo({ ...businessInfo, phone: e.target.value })} placeholder="(801) 555-1234" data-testid="input-phone" />
+                  </div>
+                  <div>
+                    <Label>Email Address</Label>
+                    <Input value={businessInfo.email} onChange={(e) => setBusinessInfo({ ...businessInfo, email: e.target.value })} type="email" placeholder="hello@timbertaylordoodles.com" data-testid="input-email" />
+                  </div>
+                  <div className="col-span-full">
+                    <Label>Street Address</Label>
+                    <Input value={businessInfo.address} onChange={(e) => setBusinessInfo({ ...businessInfo, address: e.target.value })} placeholder="123 Puppy Lane" data-testid="input-address" />
+                  </div>
+                  <div>
+                    <Label>City</Label>
+                    <Input value={businessInfo.city} onChange={(e) => setBusinessInfo({ ...businessInfo, city: e.target.value })} placeholder="Salt Lake City" data-testid="input-city" />
+                  </div>
+                  <div>
+                    <Label>State</Label>
+                    <Input value={businessInfo.state} onChange={(e) => setBusinessInfo({ ...businessInfo, state: e.target.value })} data-testid="input-state" />
+                  </div>
+                  <div>
+                    <Label>ZIP Code</Label>
+                    <Input value={businessInfo.zipCode} onChange={(e) => setBusinessInfo({ ...businessInfo, zipCode: e.target.value })} placeholder="84101" data-testid="input-zip" />
+                  </div>
+                </div>
+                <Button type="submit" disabled={saveSiteSettingsMutation.isPending} data-testid="button-save-business">
+                  {saveSiteSettingsMutation.isPending ? "Saving..." : "Save Business Info"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeSection === "social" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Social Media Links</CardTitle>
+              <CardDescription>Connect your social media profiles</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => { e.preventDefault(); saveSocialLinks(); }} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Facebook</Label>
+                    <Input value={socialLinks.facebook} onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })} placeholder="https://facebook.com/yourpage" data-testid="input-facebook" />
+                  </div>
+                  <div>
+                    <Label>Instagram</Label>
+                    <Input value={socialLinks.instagram} onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })} placeholder="https://instagram.com/yourprofile" data-testid="input-instagram" />
+                  </div>
+                  <div>
+                    <Label>TikTok</Label>
+                    <Input value={socialLinks.tiktok} onChange={(e) => setSocialLinks({ ...socialLinks, tiktok: e.target.value })} placeholder="https://tiktok.com/@yourprofile" data-testid="input-tiktok" />
+                  </div>
+                  <div>
+                    <Label>YouTube</Label>
+                    <Input value={socialLinks.youtube} onChange={(e) => setSocialLinks({ ...socialLinks, youtube: e.target.value })} placeholder="https://youtube.com/@yourchannel" data-testid="input-youtube" />
+                  </div>
+                  <div>
+                    <Label>Twitter / X</Label>
+                    <Input value={socialLinks.twitter} onChange={(e) => setSocialLinks({ ...socialLinks, twitter: e.target.value })} placeholder="https://twitter.com/yourhandle" data-testid="input-twitter" />
+                  </div>
+                </div>
+                <Button type="submit" disabled={saveSiteSettingsMutation.isPending} data-testid="button-save-social">
+                  {saveSiteSettingsMutation.isPending ? "Saving..." : "Save Social Links"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeSection === "hours" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Business Hours</CardTitle>
+              <CardDescription>Set your availability for customer inquiries</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => { e.preventDefault(); saveBusinessHours(); }} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 max-w-md">
+                  <div>
+                    <Label>Monday - Friday</Label>
+                    <Input value={businessHours.mondayFriday} onChange={(e) => setBusinessHours({ ...businessHours, mondayFriday: e.target.value })} placeholder="9:00 AM - 5:00 PM" data-testid="input-hours-weekday" />
+                  </div>
+                  <div>
+                    <Label>Saturday</Label>
+                    <Input value={businessHours.saturday} onChange={(e) => setBusinessHours({ ...businessHours, saturday: e.target.value })} placeholder="10:00 AM - 3:00 PM" data-testid="input-hours-saturday" />
+                  </div>
+                  <div>
+                    <Label>Sunday</Label>
+                    <Input value={businessHours.sunday} onChange={(e) => setBusinessHours({ ...businessHours, sunday: e.target.value })} placeholder="Closed" data-testid="input-hours-sunday" />
+                  </div>
+                </div>
+                <Button type="submit" disabled={saveSiteSettingsMutation.isPending} data-testid="button-save-hours">
+                  {saveSiteSettingsMutation.isPending ? "Saving..." : "Save Business Hours"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeSection === "content" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Website Content</CardTitle>
+              <CardDescription>Customize your homepage and about section text</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => { e.preventDefault(); saveAboutContent(); }} className="space-y-4">
+                <div>
+                  <Label>Hero Title</Label>
+                  <Input value={aboutContent.heroTitle} onChange={(e) => setAboutContent({ ...aboutContent, heroTitle: e.target.value })} data-testid="input-hero-title" />
+                </div>
+                <div>
+                  <Label>Hero Subtitle</Label>
+                  <Input value={aboutContent.heroSubtitle} onChange={(e) => setAboutContent({ ...aboutContent, heroSubtitle: e.target.value })} data-testid="input-hero-subtitle" />
+                </div>
+                <div>
+                  <Label>About Us Text</Label>
+                  <Textarea value={aboutContent.aboutText} onChange={(e) => setAboutContent({ ...aboutContent, aboutText: e.target.value })} rows={4} placeholder="Tell visitors about your family and your passion for raising doodles..." data-testid="input-about-text" />
+                </div>
+                <div>
+                  <Label>Mission Statement</Label>
+                  <Textarea value={aboutContent.missionStatement} onChange={(e) => setAboutContent({ ...aboutContent, missionStatement: e.target.value })} rows={3} placeholder="Our mission is to..." data-testid="input-mission" />
+                </div>
+                <Button type="submit" disabled={saveSiteSettingsMutation.isPending} data-testid="button-save-content">
+                  {saveSiteSettingsMutation.isPending ? "Saving..." : "Save Content"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeSection === "pricing" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Pricing Settings</CardTitle>
+              <CardDescription>Set your deposit amount and base puppy prices</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => { e.preventDefault(); savePricingInfo(); }} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Deposit Amount ($)</Label>
+                    <Input type="number" value={pricingInfo.depositAmount} onChange={(e) => setPricingInfo({ ...pricingInfo, depositAmount: e.target.value })} data-testid="input-deposit-amount" />
+                  </div>
+                  <div>
+                    <Label>Mini Goldendoodle Price ($)</Label>
+                    <Input type="number" value={pricingInfo.miniGoldendoodlePrice} onChange={(e) => setPricingInfo({ ...pricingInfo, miniGoldendoodlePrice: e.target.value })} data-testid="input-price-mini-goldendoodle" />
+                  </div>
+                  <div>
+                    <Label>Teacup Goldendoodle Price ($)</Label>
+                    <Input type="number" value={pricingInfo.teacupGoldendoodlePrice} onChange={(e) => setPricingInfo({ ...pricingInfo, teacupGoldendoodlePrice: e.target.value })} data-testid="input-price-teacup" />
+                  </div>
+                  <div>
+                    <Label>Mini Bernedoodle Price ($)</Label>
+                    <Input type="number" value={pricingInfo.miniBernedoodlePrice} onChange={(e) => setPricingInfo({ ...pricingInfo, miniBernedoodlePrice: e.target.value })} data-testid="input-price-bernedoodle" />
+                  </div>
+                </div>
+                <Button type="submit" disabled={saveSiteSettingsMutation.isPending} data-testid="button-save-pricing">
+                  {saveSiteSettingsMutation.isPending ? "Saving..." : "Save Pricing"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeSection === "email" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Email Configuration</CardTitle>
+              <CardDescription>Configure how emails are sent to customers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => { e.preventDefault(); saveEmailSettingsMutation.mutate(emailFormData); }} className="space-y-4 max-w-md">
+                <div>
+                  <Label>Sender Email</Label>
+                  <Input value={emailFormData.senderEmail} onChange={(e) => setEmailFormData({ ...emailFormData, senderEmail: e.target.value })} type="email" data-testid="input-sender-email" />
+                </div>
+                <div>
+                  <Label>Sender Name</Label>
+                  <Input value={emailFormData.senderName} onChange={(e) => setEmailFormData({ ...emailFormData, senderName: e.target.value })} data-testid="input-sender-name" />
+                </div>
+                <div>
+                  <Label>Provider</Label>
+                  <Select value={emailFormData.provider} onValueChange={(value) => setEmailFormData({ ...emailFormData, provider: value })}>
+                    <SelectTrigger data-testid="select-email-provider"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sendgrid">SendGrid</SelectItem>
+                      <SelectItem value="gmail">Gmail</SelectItem>
+                      <SelectItem value="custom">Custom SMTP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>API Key / Password</Label>
+                  <Input type="password" value={emailFormData.apiKey} onChange={(e) => setEmailFormData({ ...emailFormData, apiKey: e.target.value })} placeholder="Your API key" data-testid="input-email-api-key" />
+                </div>
+                <Button type="submit" disabled={saveEmailSettingsMutation.isPending} data-testid="button-save-email">
+                  {saveEmailSettingsMutation.isPending ? "Saving..." : "Save Email Settings"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
   );
 }
